@@ -1,0 +1,39 @@
+import java.io.*;
+
+
+//This is the class that is run to accomplish work.
+//Preconditions of the program should be that it is run with a file name in its arguments
+//and the file ought to be present in the project folder. This is subject to change, but it will service
+//at least for now.
+public class theBest {
+
+	public static void main(String[] args) throws IOException {
+		//STEP ONE: Read in the file.
+		readFile(args[0]);
+
+		//STEP TWO: 
+		
+	}
+	
+	/*this method will process the file given for input.
+	 * It will save the header into a string (pending), 
+	 * save the vertices into a matrix construct (maybe 2D array?)
+	 * And then the number of faces into a variable. Hopefully I'm not
+	 * forgetting any pieces.*/
+	public static void readFile(String fileName) throws IOException{
+		//First, construct a FileReader To get into the file.
+		FileReader input = new FileReader(fileName);
+		//Then, couple it with a BufferedReader
+		BufferedReader br = new BufferedReader(input);
+		String line;
+		//All this loop does is read through the file to make sure I have 
+		//access to everything. Sort of a sanity check that I'll have to get rid of
+		//once I start actually categorizing and filing the data (probably).
+		while((line=br.readLine())!=null){
+			System.out.println(line);
+		}
+		System.out.println("Ayyyyy lmaooo");
+	}
+	
+	
+}
