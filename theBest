@@ -1,9 +1,6 @@
 import java.io.*;
-
-
-
-
-
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 
@@ -14,17 +11,38 @@ import java.io.*;
 public class theBest {
 
 	//Global Variables
-	public static String header;
-	static int vertices;
-	static int faces;
+	static String header;
+	public static int vertices;
+	public static int faces;
+	
+	/*On the organization of 2d arrays in Java, I can do this two ways.
+	in the first, I can have the first array be of the different points,
+	and then the second be the different positions within those vectors,
+	or I can I reverse it and scroll through the 4 positions within the 
+	vertices. As of now -and until I find good reason to change my
+	decision- I will have the first index hold different vectors, and then
+	have the second index access the points therein. Think:
+	[a b c d]
+	[e f g h]
+	[i j k l], which I would get from vertexArray[3][4]*/
+	public static float[][] vertexArray;
+	
 	
 	public static void main(String[] args) throws IOException {
 		//STEP ONE: Read in the file.
 		readFile(args[0]);
 
 		//STEP TWO: 
-		System.out.println("Ayyyyy lmaooo\n" + header);
-		System.out.println(vertices+" "+faces);
+		//System.out.println("Ayyyyy lmaooo\n" + header);
+		System.out.println(vertices+" "+faces +"\nSNAPINTOASLIMJIM");
+		
+		
+		//printing the points out.
+		for(int i=0;i<vertices;i++){
+			for(int j=0;j<=3;j++){
+				System.out.print(vertexArray[i][j]+" ");
+			}System.out.println();
+		}
 	}
 	
 	/*this method will process the file given for input.
@@ -33,6 +51,15 @@ public class theBest {
 	 * And then the number of faces into a variable. Hopefully I'm not
 	 * forgetting any pieces.*/
 	public static void readFile(String fileName) throws IOException{
+		//These integer flags will be used to help keep the program from going
+		//through too many unnecessary if statements; the first section
+		//only applies to the pre-data bits, and so and so forth.
+		int topflag=0;
+		int resetflag=0;
+		
+		
+		
+
 		//First, construct a FileReader To get into the file.
 		FileReader input = new FileReader(fileName);
 		//Then, couple it with a BufferedReader
@@ -48,9 +75,21 @@ public class theBest {
 		//access to everything. Sort of a sanity check that I'll have to get rid of
 		//once I start actually categorizing and filing the data (probably).
 		while((line=br.readLine())!=null){
-			System.out.println(line);
+			//System.out.println(line);
 			
 			//SORTING THE OUTPUT.
+			
+			//This checks if we can reset the linecounter, which we'll only
+			//do once when we switch from the header to the data.
+			if(resetflag==1){
+				linecounter=0;
+				resetflag=0;
+			}
+			
+			
+			//This first if will keep the data from being iterated over
+			//more times than it needs to.
+			if(topflag==0){
 			
 			//This if detects whether we are reading the first line.
 			//I need to do this because without this 'if', there is already
@@ -96,18 +135,75 @@ public class theBest {
 				line = line.replaceAll("[^0-9]+", "");
 				faces=Integer.parseInt(line);
 			}
-			
-			
-			
-			//at the end of loop, increment the counter to prepare for next cycle.
+			if(linecounter==8){
+				header+="\n"+line;
+			}
+			if(linecounter==9){
+				header+="\n"+line;
+				topflag++;
+				resetflag++;
+				vertexArray=new float[vertices][4];
+				continue;
+			}
+			//increment the counter to prepare for next cycle.
 			linecounter++;
+			
+			//This is the end of the non-data processing block.
+			}
+			
+			
+			//This is the beginning of data processing (vertices and lower)
+			if(topflag==1){
+				
+			
+			//We can also set the vertexArray's size since we know the number
+			//of vertices that we have.
+			
+			
+			//now we can count the lines until we've populated the array.
+			//This is easy now that we can just check the line counter
+			//against the number of vertices total.
+			if(linecounter<vertices){
+				System.out.println("Okay, linecounter: "+linecounter);
+				System.out.println("And number of vertices: "+vertices);
+				//SO. Here we need to parse out the floats from the strings
+				//we're reading in and then add a '1' in the 4th index to 
+				//give our vertices that last data point (which I think is
+				//correct and necessary?).
+				
+				//I'm going to use a pattern like I did to parse out integers
+				//earlier, but tweaked a bit to work for floting points.
+				Pattern p = Pattern.compile("[-]?[0-9]*\\.?[0-9]+");
+				
+				//This matcher will help me distinguish where the floats
+				//start and end, but in order to place them correctly,
+				//I also need to add the index counter below it.
+				Matcher m = p.matcher(line);
+				int index=0;
+				while(m.find()){
+					if(index<=2){
+					vertexArray[linecounter][index]=Float.parseFloat(m.group());
+					System.out.println("points: "+vertexArray[linecounter][index]);
+					index++;
+					}
+				}
+				//Now that everything else is fleshed out, we can go ahead and
+				//add the '1' in the last index.
+				vertexArray[linecounter][3]=(float) 1;
+				
+				//And here, now that we're ready for another line, we can increment
+				//the linecounter.
+				linecounter++;
+			
+			}
+			
+			//End of Data processing block.	
+			}
+		//End of input processing loop.
 		}
-		
+		System.out.println("-------------------------");
 	}
 	
-	//This helper method concatenates string b onto the end of string A.
-	public void stringAdd(String a, String b){
-		
-	}
+
 	
 }
