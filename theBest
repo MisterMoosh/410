@@ -1,18 +1,30 @@
 import java.io.*;
 
 
+
+
+
+
+
+
 //This is the class that is run to accomplish work.
 //Preconditions of the program should be that it is run with a file name in its arguments
 //and the file ought to be present in the project folder. This is subject to change, but it will service
 //at least for now.
 public class theBest {
 
+	//Global Variables
+	public static String header;
+	static int vertices;
+	static int faces;
+	
 	public static void main(String[] args) throws IOException {
 		//STEP ONE: Read in the file.
 		readFile(args[0]);
 
 		//STEP TWO: 
-		
+		System.out.println("Ayyyyy lmaooo\n" + header);
+		System.out.println(vertices+" "+faces);
 	}
 	
 	/*this method will process the file given for input.
@@ -25,15 +37,77 @@ public class theBest {
 		FileReader input = new FileReader(fileName);
 		//Then, couple it with a BufferedReader
 		BufferedReader br = new BufferedReader(input);
-		String line;
+		String line="";
+		
+		//this variable will help me to count through lines to identify
+		//what lines I want to do with where, given the standardized form
+		//of the input files.
+		int linecounter=0;
+		
 		//All this loop does is read through the file to make sure I have 
 		//access to everything. Sort of a sanity check that I'll have to get rid of
 		//once I start actually categorizing and filing the data (probably).
 		while((line=br.readLine())!=null){
 			System.out.println(line);
+			
+			//SORTING THE OUTPUT.
+			
+			//This if detects whether we are reading the first line.
+			//I need to do this because without this 'if', there is already
+			//a 'null' when I try to concatenate more to the string.
+			//This first if ensures I don't get any of that.
+			if(linecounter==0){
+				header=line;
+				
+			}
+			//This next else if snags the next two lines of code, plain and 
+			//simple since nothing needs to be done with them or extracted
+			//from them.
+			else if(linecounter<=2){
+				header+="\n";
+				header+=line;
+				
+			}
+			//this if block will catch the line that holds the number of vertices
+			//in the model, and then stores it in a variable vertices.
+			if(linecounter==3){
+				//first we need to add the line to the header
+				
+				//Then we need to extract the number from the string.
+				//This line deletes everything that isn't a number 0-9 within
+				//the string.
+				line = line.replaceAll("[^0-9]+", "");
+				vertices=Integer.parseInt(line);
+			}
+			//The next three lines just add "property float32 x", etc
+			//to our saved header since we don't really care if the floats
+			//are 32 or 64 
+			//(if it turns out we do, I'll change something here)
+			if(linecounter>=4 && linecounter<=6){
+				header+="\n";
+				header+=line;
+			}
+			
+			//In this next if, we need to extract the number of faces
+			//from the header, which will be done in much the same
+			//way as extracting the number of vertices.
+			if(linecounter==7){
+				header+="\n"+line;
+				line = line.replaceAll("[^0-9]+", "");
+				faces=Integer.parseInt(line);
+			}
+			
+			
+			
+			//at the end of loop, increment the counter to prepare for next cycle.
+			linecounter++;
 		}
-		System.out.println("Ayyyyy lmaooo");
+		
 	}
 	
+	//This helper method concatenates string b onto the end of string A.
+	public void stringAdd(String a, String b){
+		
+	}
 	
 }
