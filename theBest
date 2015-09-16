@@ -27,29 +27,58 @@ public class theBest {
 	[i j k l], which I would get from vertexArray[3][4]*/
 	public static float[][] vertexArray;
 	
+	//This is very similar, but holds the data beneath the vertices.
+	public static int[][] faceArray;
 	
 	public static void main(String[] args) throws IOException {
+		//This checks if the user has input two arguments for input and output
+		//file names. If they don't, or use too many arguments, the program
+		//exits.
+		if(args.length!=2){
+			System.out.println("Must specify input and output file names.");
+			System.exit(0);
+		}
 		//STEP ONE: Read in the file.
 		readFile(args[0]);
 
-		//STEP TWO: 
-		//System.out.println("Ayyyyy lmaooo\n" + header);
+		//STEP TWO: While loop handling transformations
+
 		System.out.println(vertices+" "+faces +"\nSNAPINTOASLIMJIM");
 		
 		
-		//printing the points out.
-		for(int i=0;i<vertices;i++){
-			for(int j=0;j<=3;j++){
-				System.out.print(vertexArray[i][j]+" ");
-			}System.out.println();
-		}
+		//printing the points out. Note that you should only do this when
+		//the 'W' command is specified.
+		writeFile(args[1]);
+	//end main
 	}
 	
+	//This method will print out the transformed data into a specified
+	//output file. I will run it at the end of the while loop that keeps
+	//accepting transformation inputs.
+	public static void writeFile(String outFile) throws IOException {
+		//Creating a BufferedWriter to print to the new file.
+		Writer writer = new BufferedWriter(new OutputStreamWriter(
+				new FileOutputStream(outFile), "utf-8"));
+		//First we print out the header
+					writer.write(header+"\n");
+					//Then we print out the vertices.
+					for(int i=0;i<vertices;i++){
+						for(int j=0;j<=3;j++){
+							writer.write(vertexArray[i][j]+" ");
+						}writer.write("\n");
+					}
+					
+					//And now we print the rest of the data.
+					
+					writer.close();
+		
+	}
+
 	/*this method will process the file given for input.
-	 * It will save the header into a string (pending), 
-	 * save the vertices into a matrix construct (maybe 2D array?)
-	 * And then the number of faces into a variable. Hopefully I'm not
-	 * forgetting any pieces.*/
+	 * It will save the header into a string, 
+	 * save the vertices into a matrix construct 2D array
+	 * And then the number of faces into a variable. I will
+	 * also save the remaining data into a similar 2D array.*/
 	public static void readFile(String fileName) throws IOException{
 		//These integer flags will be used to help keep the program from going
 		//through too many unnecessary if statements; the first section
@@ -70,6 +99,14 @@ public class theBest {
 		//what lines I want to do with where, given the standardized form
 		//of the input files.
 		int linecounter=0;
+		
+		//This variable will help me tell when to switch what I'm saving
+		//in the data processing section.
+		int dataLines=vertices+faces;
+		
+		//This variable will enable me to allocate memory for my faces
+		//storage and avoid re-creating the 2d array over and over.
+		int faceArrayFlag=0;
 		
 		//All this loop does is read through the file to make sure I have 
 		//access to everything. Sort of a sanity check that I'll have to get rid of
@@ -111,7 +148,7 @@ public class theBest {
 			//in the model, and then stores it in a variable vertices.
 			if(linecounter==3){
 				//first we need to add the line to the header
-				
+				header+="\n"+line;
 				//Then we need to extract the number from the string.
 				//This line deletes everything that isn't a number 0-9 within
 				//the string.
@@ -142,6 +179,9 @@ public class theBest {
 				header+="\n"+line;
 				topflag++;
 				resetflag++;
+				
+				//We can now set the vertexArray's size since we know the number
+				//of vertices that we have.
 				vertexArray=new float[vertices][4];
 				continue;
 			}
@@ -156,8 +196,7 @@ public class theBest {
 			if(topflag==1){
 				
 			
-			//We can also set the vertexArray's size since we know the number
-			//of vertices that we have.
+			
 			
 			
 			//now we can count the lines until we've populated the array.
@@ -194,7 +233,23 @@ public class theBest {
 				//And here, now that we're ready for another line, we can increment
 				//the linecounter.
 				linecounter++;
-			
+				
+				//This shows that we can go ahead and create the array for
+				//the faces. It also should NEVER get set to one after it 
+				//has passed through and the array has been made.
+				faceArrayFlag=1;
+				
+				//Now we're searching the rest of the file for faces, and 
+				//saving them.
+			}
+			if(linecounter>=vertices && linecounter <dataLines){
+				System.out.println("LENGTH OF FACES: "+line.length());
+				if(faceArrayFlag==1){
+					int numfaces=0;
+					faceArrayFlag=0;
+					faceArray=new int[faces][numfaces];
+				}
+				
 			}
 			
 			//End of Data processing block.	
