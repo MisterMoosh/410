@@ -15,6 +15,15 @@ public class theBest {
 	public static int vertices;
 	public static int faces;
 	
+	//This variable will hold the first value of every face sequence
+	//Because this value dictates how many other values the 2D array
+	//Needs to hold in its second dimension. It helps, trust.
+	public static int faceNums;
+	
+	//This variable will help me tell when to switch what I'm saving
+	//in the data processing section.
+	public static int dataLines;
+	
 	/*On the organization of 2d arrays in Java, I can do this two ways.
 	in the first, I can have the first array be of the different points,
 	and then the second be the different positions within those vectors,
@@ -45,6 +54,7 @@ public class theBest {
 
 		System.out.println(vertices+" "+faces +"\nSNAPINTOASLIMJIM");
 		
+		
 		//printing the points out. Note that you should only do this when
 		//the 'W' command is specified.
 		writeFile(args[1]);
@@ -55,6 +65,15 @@ public class theBest {
 	//output file. I will run it at the end of the while loop that keeps
 	//accepting transformation inputs.
 	public static void writeFile(String outFile) throws IOException {
+		
+		
+		for(int i=0;i<faces;i++){
+			for(int j=0;j<faceNums;j++){
+				System.out.println(faceArray[i][j]);
+			}
+		}
+		
+		
 		//Creating a BufferedWriter to print to the new file.
 		Writer writer = new BufferedWriter(new OutputStreamWriter(
 				new FileOutputStream(outFile), "utf-8"));
@@ -62,12 +81,17 @@ public class theBest {
 					writer.write(header+"\n");
 					//Then we print out the vertices.
 					for(int i=0;i<vertices;i++){
-						for(int j=0;j<=3;j++){
+						for(int j=0;j<=2;j++){
 							writer.write(vertexArray[i][j]+" ");
 						}writer.write("\n");
 					}
 					
 					//And now we print the rest of the data.
+					for(int i=0;i<faces;i++){
+						for(int j=0; j<=faceNums;j++){
+							writer.write(faceArray[i][j]+" ");
+						}if(i!=faces-1){writer.write("\n");}
+					}
 					
 					writer.close();
 		
@@ -85,9 +109,6 @@ public class theBest {
 		int topflag=0;
 		int resetflag=0;
 		
-		
-		
-
 		//First, construct a FileReader To get into the file.
 		FileReader input = new FileReader(fileName);
 		//Then, couple it with a BufferedReader
@@ -98,10 +119,6 @@ public class theBest {
 		//what lines I want to do with where, given the standardized form
 		//of the input files.
 		int linecounter=0;
-		
-		//This variable will help me tell when to switch what I'm saving
-		//in the data processing section.
-		int dataLines=vertices+faces;
 		
 		//This variable will enable me to allocate memory for my faces
 		//storage and avoid re-creating the 2d array over and over.
@@ -137,53 +154,56 @@ public class theBest {
 			}
 			//This next else if snags the next two lines of code, plain and 
 			//simple since nothing needs to be done with them or extracted
-			//from them.
-			else if(linecounter<=2){
+			//from them and they seem to be standardized to "ply" and then
+			//listing the ascii format.
+			else if(linecounter<2){
 				header+="\n";
 				header+=line;
 				
 			}
-			//this if block will catch the line that holds the number of vertices
-			//in the model, and then stores it in a variable vertices.
-			if(linecounter==3){
-				//first we need to add the line to the header
+			
+			/////////////////////////////////////////
+			//FROM HERE, WE NEED TO DETECT DIFFERENT LINES. 
+			//GOTTA CHECK IF SOMETHING NEEDS TO BE EXTRACTED, AS WELL
+			//AS IF WE'VE REACHED THE END OF THE HEADER.
+			//SINCE THE 'end_header' line is pretty consistent,
+			//I FEEL SAFE USING IT TO IDENTIFY THE END OF THE HEADER.
+			////////////////////////////////////////////
+			
+			//This else if will catch the number of elements out of
+			//the line that specifies them by identifying a line that starts
+			//with "element ve", because well, I guess I didn't want to type
+			//the whole word "vertex" out. And I guess it also covers the
+			//typo of accidentally writing "element vertices".
+			//I'll call that a win.
+			else if(line.substring(0,10).equals("element ve")){
 				header+="\n"+line;
-				//Then we need to extract the number from the string.
-				//This line deletes everything that isn't a number 0-9 within
-				//the string.
 				line = line.replaceAll("[^0-9]+", "");
 				vertices=Integer.parseInt(line);
 			}
-			//The next three lines just add "property float32 x", etc
-			//to our saved header since we don't really care if the floats
-			//are 32 or 64 
-			//(if it turns out we do, I'll change something here)
-			if(linecounter>=4 && linecounter<=6){
-				header+="\n";
-				header+=line;
-			}
-			
-			//In this next if, we need to extract the number of faces
-			//from the header, which will be done in much the same
-			//way as extracting the number of vertices.
-			if(linecounter==7){
+			//This else if should do basically the same thing extracting
+			//the number of faces from the header.
+			else if(line.substring(0,10).equals("element fa")){
 				header+="\n"+line;
 				line = line.replaceAll("[^0-9]+", "");
 				faces=Integer.parseInt(line);
 			}
-			if(linecounter==8){
-				header+="\n"+line;
-			}
-			if(linecounter==9){
+			//this last else if catches the last line that says
+			//"end_header" and then marks things up so they can begin 
+			//processing data.
+			else if(line.equals("end_header")){
 				header+="\n"+line;
 				topflag++;
 				resetflag++;
-				
 				//We can now set the vertexArray's size since we know the number
 				//of vertices that we have.
 				vertexArray=new float[vertices][4];
+				dataLines=vertices+faces;
 				continue;
 			}
+			//our catch-all else just adds the line to the header.
+			else{header+="\n"+line;}
+
 			//increment the counter to prepare for next cycle.
 			linecounter++;
 			
@@ -195,15 +215,10 @@ public class theBest {
 			if(topflag==1){
 				
 			
-			
-			
-			
 			//now we can count the lines until we've populated the array.
 			//This is easy now that we can just check the line counter
 			//against the number of vertices total.
 			if(linecounter<vertices){
-				System.out.println("Okay, linecounter: "+linecounter);
-				System.out.println("And number of vertices: "+vertices);
 				//SO. Here we need to parse out the floats from the strings
 				//we're reading in and then add a '1' in the 4th index to 
 				//give our vertices that last data point (which I think is
@@ -221,7 +236,7 @@ public class theBest {
 				while(m.find()){
 					if(index<=2){
 					vertexArray[linecounter][index]=Float.parseFloat(m.group());
-					System.out.println("points: "+vertexArray[linecounter][index]);
+					//System.out.println("points: "+vertexArray[linecounter][index]);
 					index++;
 					}
 				}
@@ -241,14 +256,40 @@ public class theBest {
 				//Now we're searching the rest of the file for faces, and 
 				//saving them.
 			}
-			if(linecounter>=vertices && linecounter <dataLines){
-				System.out.println("LENGTH OF FACES: "+line.length());
+			//System.out.println("Linecounter: "+linecounter);
+			//System.out.println("Vertices: "+vertices);
+			//System.out.println("Datalines: "+dataLines);
+			if(linecounter>vertices && linecounter<=dataLines){
+				
+				linecounter++;
 				if(faceArrayFlag==1){
-					int numfaces=0;
+					faceNums=Integer.parseInt(line.substring(0,1));
 					faceArrayFlag=0;
-					faceArray=new int[faces][numfaces];
+					faceArray=new int[faces][faceNums+1];
+					System.out.println("FaceNums: "+faceNums);
+				}
+				//Since at this point we're pretty sure that all that's
+				//in each line is integers, we can split along
+				//whitespace and then place each index into its correct place
+				//from there.
+				
+				String[] splitter = line.split(" ");
+				
+				int index=0;
+				
+				while(index<=faceNums){
+					//System.out.println(splitter[index]);
+					//System.out.println("THINGS: "+splitter[index]);
+					faceArray[linecounter-vertices-2][index]=Integer.parseInt(splitter[index]);
+					//System.out.println("points: "+faceArray[linecounter-vertices][index]);
+					index++;
+					
 				}
 				
+				
+			}
+			if(linecounter==vertices){
+				linecounter++;
 			}
 			
 			//End of Data processing block.	
