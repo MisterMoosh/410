@@ -45,7 +45,6 @@ public class theBest {
 
 		System.out.println(vertices+" "+faces +"\nSNAPINTOASLIMJIM");
 		
-		
 		//printing the points out. Note that you should only do this when
 		//the 'W' command is specified.
 		writeFile(args[1]);
