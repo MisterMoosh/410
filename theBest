@@ -1,9 +1,7 @@
 import java.io.*;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-
-
 //This is the class that is run to accomplish work.
 //Preconditions of the program should be that it is run with a file name in its arguments
 //and the file ought to be present in the project folder. This is subject to change, but it will service
@@ -51,13 +49,49 @@ public class theBest {
 		readFile(args[0]);
 
 		//STEP TWO: While loop handling transformations
-
-		System.out.println(vertices+" "+faces +"\nSNAPINTOASLIMJIM");
 		
+		//This scanner will read in data from the keyboard; pretty 
+		//straightforward.
+		Scanner kb=new Scanner(System.in);
+		//A usage statement first off.
+		System.out.println("Enter 'h' for help");
 		
-		//printing the points out. Note that you should only do this when
-		//the 'W' command is specified.
-		writeFile(args[1]);
+		//This boolean will help me exit the while loop when a 
+		//'W' is entered.
+		boolean stayInLoop=true;
+		
+		//Now this while loop will enable the program to take in 
+		//commands, one at a time, and handle them, with the help of 
+		//the variable "command"
+		String command;
+		while(stayInLoop){
+			
+			System.out.print("Enter command: ");
+			command=kb.nextLine();
+			switch (command.substring(0,1)){
+			//This case exits the while loop, prompts the user, and writes
+			//output.
+			case "W": stayInLoop=false;
+					writeFile(args[1]);
+					System.out.println("Exiting program and writing output file.");
+					break;
+			//This case just prints a command list for reference.
+			case "h": System.out.println("List of commands");
+						System.out.println("Scale Matrix:     'S sx sy sz'");
+						System.out.println("Translate matrix: 'T tx ty tz'");
+						System.out.println("Rotate matrix:    'R rx ry rz theta'");
+						System.out.println("Write and exit:   'W'");
+						break;
+			//This case extracts the scalars from the command, and then runs
+			//the matrixScale() method 3 times, once for each column and
+			//Scalar.
+			case "S": matrixScale(4, 2);
+						break;
+						
+			default: System.out.println("Invalid command. Type 'h' for help.");
+				break;
+			}
+		}		
 	//end main
 	}
 	
@@ -65,15 +99,7 @@ public class theBest {
 	//output file. I will run it at the end of the while loop that keeps
 	//accepting transformation inputs.
 	public static void writeFile(String outFile) throws IOException {
-		
-		
-		for(int i=0;i<faces;i++){
-			for(int j=0;j<faceNums;j++){
-				System.out.println(faceArray[i][j]);
-			}
-		}
-		
-		
+				
 		//Creating a BufferedWriter to print to the new file.
 		Writer writer = new BufferedWriter(new OutputStreamWriter(
 				new FileOutputStream(outFile), "utf-8"));
@@ -85,16 +111,13 @@ public class theBest {
 							writer.write(vertexArray[i][j]+" ");
 						}writer.write("\n");
 					}
-					
 					//And now we print the rest of the data.
 					for(int i=0;i<faces;i++){
 						for(int j=0; j<=faceNums;j++){
 							writer.write(faceArray[i][j]+" ");
 						}if(i!=faces-1){writer.write("\n");}
 					}
-					
 					writer.close();
-		
 	}
 
 	/*this method will process the file given for input.
@@ -139,9 +162,10 @@ public class theBest {
 				resetflag=0;
 			}
 			
-			
-			//This first if will keep the data from being iterated over
-			//more times than it needs to.
+			//This first if will keep the if logic from being iterated over
+			//more times than it needs to, though I guess since it's if-else
+			//logic it isn't technically much faster? Lets me use an 'else'
+			//at the end though, so I'll call it a win.
 			if(topflag==0){
 			
 			//This if detects whether we are reading the first line.
@@ -161,14 +185,6 @@ public class theBest {
 				header+=line;
 				
 			}
-			
-			/////////////////////////////////////////
-			//FROM HERE, WE NEED TO DETECT DIFFERENT LINES. 
-			//GOTTA CHECK IF SOMETHING NEEDS TO BE EXTRACTED, AS WELL
-			//AS IF WE'VE REACHED THE END OF THE HEADER.
-			//SINCE THE 'end_header' line is pretty consistent,
-			//I FEEL SAFE USING IT TO IDENTIFY THE END OF THE HEADER.
-			////////////////////////////////////////////
 			
 			//This else if will catch the number of elements out of
 			//the line that specifies them by identifying a line that starts
@@ -203,18 +219,13 @@ public class theBest {
 			}
 			//our catch-all else just adds the line to the header.
 			else{header+="\n"+line;}
-
 			//increment the counter to prepare for next cycle.
 			linecounter++;
-			
-			//This is the end of the non-data processing block.
+			//This is the end of the header processing block.
 			}
-			
 			
 			//This is the beginning of data processing (vertices and lower)
 			if(topflag==1){
-				
-			
 			//now we can count the lines until we've populated the array.
 			//This is easy now that we can just check the line counter
 			//against the number of vertices total.
@@ -266,7 +277,7 @@ public class theBest {
 					faceNums=Integer.parseInt(line.substring(0,1));
 					faceArrayFlag=0;
 					faceArray=new int[faces][faceNums+1];
-					System.out.println("FaceNums: "+faceNums);
+					
 				}
 				//Since at this point we're pretty sure that all that's
 				//in each line is integers, we can split along
@@ -286,7 +297,6 @@ public class theBest {
 					
 				}
 				
-				
 			}
 			if(linecounter==vertices){
 				linecounter++;
@@ -296,9 +306,18 @@ public class theBest {
 			}
 		//End of input processing loop.
 		}
-		System.out.println("-------------------------");
 	}
 	
-
+	
+	//This method will perform the scaling operation on ROWS of a matrix at a time.
+	//The arguments it needs are first an int scalar, which it will use
+	//to scale the data, and second an int column, which specifies the 
+	//column/variable that is being modified. 0 for x, 1 for y, 2 for z.
+	public static void matrixScale(int scalar, int col){
+		for(int i=0;i<vertices;i++){
+				vertexArray[i][col]*=scalar;
+		}
+	}
+	
 	
 }
