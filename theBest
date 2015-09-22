@@ -12,6 +12,16 @@ public class theBest {
 	static String header;
 	public static int vertices;
 	public static int faces;
+        public static float averageX=0;
+        public static float averageY=0;
+        public static float averageZ=0;
+        public static float minX=999999999;
+        public static float maxX=-999999999;
+        public static float minY=999999999;
+        public static float maxY=-999999999;
+        public static float minZ=999999999;
+        public static float maxZ=-999999999;
+            
 	
 	//This variable will hold the first value of every face sequence
 	//Because this value dictates how many other values the 2D array
@@ -37,6 +47,18 @@ public class theBest {
 	//This is very similar, but holds the data beneath the vertices.
 	public static int[][] faceArray;
 	
+        //This array will hold the transformation array for scaling matrices and models.
+        public static float[][]scaleArray;
+        
+        //Similarly, this will hold a transformation array for translating matrices.
+        public static float[][] transformArray;
+        
+        //And likewise, this will hold the rotation matris.
+        public static float[][] rotationArray;
+        
+        //And finally, this array will hold the final combined transformation matrix.
+        public static float[][] resultArray;
+        
 	public static void main(String[] args) throws IOException {
 		//This checks if the user has input two arguments for input and output
 		//file names. If they don't, or use too many arguments, the program
@@ -45,6 +67,33 @@ public class theBest {
 			System.out.println("Must specify input and output file names.");
 			System.exit(0);
 		}
+                
+                //At this point I'm going to initialize the transformation matrices
+                //So hopefully they can be useful somehow.
+                rotationArray=new float[4][4];
+                transformArray=new float[4][4];
+                scaleArray=new float[4][4];
+                resultArray=new float[4][4];
+
+                
+                
+                
+                //And now we fill the arrays with the identity matrix.
+                for(int i=0;i<4;i++){
+                    for(int j=0;j<4;j++){
+                        if(i==j){
+                            rotationArray[i][j]=1;
+                            transformArray[i][j]=1;
+                            scaleArray[i][j]=1;
+                            resultArray[i][j]=1;
+                            
+                        }
+                    }
+                }
+              
+                
+                
+                
 		//STEP ONE: Read in the file.
 		readFile(args[0]);
 
@@ -53,6 +102,17 @@ public class theBest {
 		//This scanner will read in data from the keyboard; pretty 
 		//straightforward.
 		Scanner kb=new Scanner(System.in);
+                
+                //Printing the number of vertices, faces, mean vertex and bounding
+                //box of vertices.
+                System.out.println("Number of vertices: "+vertices);
+                System.out.println("Number of faces: "+faces);
+                System.out.println("Mean Vertex:  ["+(averageX/vertices)+", "+(averageY/vertices)+", "+(averageZ/vertices)+"]");
+                System.out.println("The bounding box of this model is within the coordinates:");
+                System.out.println("X: "+minX+", "+maxX);
+                System.out.println("Y: "+minY+", "+maxY);
+                System.out.println("Z: "+minZ+", "+maxZ);
+                
 		//A usage statement first off.
 		System.out.println("Enter 'h' for help");
 		
@@ -85,9 +145,71 @@ public class theBest {
 			//This case extracts the scalars from the command, and then runs
 			//the matrixScale() method 3 times, once for each column and
 			//Scalar.
-			case "S": matrixScale(4, 2);
+			case "S":  Pattern p = Pattern.compile("[-]?[0-9]*\\.?[0-9]+");
+                                    float xScale=0;
+                                    float yScale=0;
+                                    float zScale=0;
+                                    boolean completeArgs=false;
+				//Grabbing floats from the input with error checking
+                                //To make sure 3 appropriate arguments are given.
+				Matcher m = p.matcher(command);
+				int index=0;
+                                float found;
+				while(m.find()){
+                                    found=Float.parseFloat(m.group());
+					if(index==0){
+                                            xScale=found;
+                                        }else if(index==1){
+                                            yScale=found;
+                                        }else if(index==2){
+                                            completeArgs=true;
+                                            zScale=found;
+                                            System.out.println("zMove: "+zScale);
+                                        }else if(index==3){
+                                            completeArgs=false;
+                                        }
+					index++;
+					}
+                                        if(completeArgs){
+                                            matrixScale(xScale, yScale, zScale);
+                                        }else{
+                                            System.out.println("INCORRECT ARGUMENTS SCRUB");
+                                        }
 						break;
 						
+                            
+                        case "T": Pattern p2 = Pattern.compile("[-]?[0-9]*\\.?[0-9]+");
+                                    float xMove=0;
+                                    float yMove=0;
+                                    float zMove=0;
+                                    boolean completedArgs=false;
+				//Grabbing floats from the input with error checking
+                                //To make sure 3 appropriate arguments are given.
+				Matcher buttStallion = p2.matcher(command);
+				int index2=0;
+                                float found2;
+				while(buttStallion.find()){
+                                    found2=Float.parseFloat(buttStallion.group());
+					if(index2==0){
+                                            xMove=found2;
+                                        }else if(index2==1){
+                                            yMove=found2;
+                                        }else if(index2==2){
+                                            completedArgs=true;
+                                            zMove=found2;
+                                            System.out.println("zMove: "+zMove);
+                                        }else if(index2==3){
+                                            completedArgs=false;
+                                        }
+					index2++;
+					}
+                                        if(completedArgs){
+                                            matrixTranslate(xMove, yMove, zMove);
+                                        }else{
+                                            System.out.println("INCORRECT ARGUMENTS SCRUB");
+                                        }
+						break;
+                            
 			default: System.out.println("Invalid command. Type 'h' for help.");
 				break;
 			}
@@ -100,6 +222,15 @@ public class theBest {
 	//accepting transformation inputs.
 	public static void writeFile(String outFile) throws IOException {
 				
+            //Just so we're clear, since we're done with our component matrices,
+            //Rather than make more, we're just going to overwrite the Scale matrix
+            //With the end result and then multiply that complete transformation
+            //matrix (Which again, is located in the Scale matrix variable)
+            //by our vertex data.
+            scaleArray=matrixMultiply(scaleArray, rotationArray);
+            scaleArray=matrixMultiply(scaleArray, transformArray);
+            vertexArray=matrixMultiply(vertexArray,scaleArray);
+            
 		//Creating a BufferedWriter to print to the new file.
 		Writer writer = new BufferedWriter(new OutputStreamWriter(
 				new FileOutputStream(outFile), "utf-8"));
@@ -117,6 +248,15 @@ public class theBest {
 							writer.write(faceArray[i][j]+" ");
 						}if(i!=faces-1){writer.write("\n");}
 					}
+                                        
+                                       
+                for(int i=0;i<4;i++){
+                    for(int j=0;j<4;j++){
+                        System.out.print(scaleArray[i][j]+" ");
+                    }
+                    System.out.println();
+                }
+                                        
 					writer.close();
 	}
 
@@ -244,10 +384,40 @@ public class theBest {
 				//I also need to add the index counter below it.
 				Matcher m = p.matcher(line);
 				int index=0;
+                                float found;
 				while(m.find()){
+                                    found=Float.parseFloat(m.group());
 					if(index<=2){
-					vertexArray[linecounter][index]=Float.parseFloat(m.group());
+					vertexArray[linecounter][index]=found;
 					//System.out.println("points: "+vertexArray[linecounter][index]);
+                                        
+                                        
+                                        //Here we're going to add things to our averages.
+                                        if(index==0){
+                                            averageX+=found;
+                                            if(found<minX){
+                                                minX=found;
+                                            }
+                                            else if(found>maxX){
+                                                maxX=found;
+                                            }
+                                        }else if(index==1){
+                                            averageY+=found;
+                                            if(found<minY){
+                                                minY=found;
+                                            }
+                                            else if(found>maxY){
+                                                maxY=found;
+                                            }
+                                        }else if(index==2){
+                                            averageZ+=found;
+                                            if(found<minZ){
+                                                minZ=found;
+                                            }
+                                            else if(found>maxZ){
+                                                maxZ=found;
+                                            }
+                                        }
 					index++;
 					}
 				}
@@ -296,7 +466,6 @@ public class theBest {
 					index++;
 					
 				}
-				
 			}
 			if(linecounter==vertices){
 				linecounter++;
@@ -313,11 +482,45 @@ public class theBest {
 	//The arguments it needs are first an int scalar, which it will use
 	//to scale the data, and second an int column, which specifies the 
 	//column/variable that is being modified. 0 for x, 1 for y, 2 for z.
-	public static void matrixScale(int scalar, int col){
-		for(int i=0;i<vertices;i++){
-				vertexArray[i][col]*=scalar;
-		}
+	public static void matrixScale(float xs, float ys, float zs){
+            float[][] newScale=new float[4][4];
+            newScale[0][0]=xs;
+            newScale[1][1]=ys;
+            newScale[2][2]=zs;
+		scaleArray=matrixMultiply(newScale, scaleArray);
 	}
 	
-	
+        public static float[][] matrixMultiply(float[][] A, float[][] B){
+            //I should never get into this code, but if I somehow end up multiplying two inappropriate matrices, 
+            //I want to know about it pronto.
+            if(A[0].length!=B.length){
+                System.out.println("MULTIPLYING INAPPROPRIATE MATRICES. FATAL ERROR.");
+                System.exit(-7);
+            }
+            //This array will hold the result of the computation that gets returned.
+            float[][] result=new float[A.length][B[0].length];
+
+            //This outer loop scrolls through the RESULT rows.
+            for(int i=0;i<A.length;i++){
+                //this inner loop scrolls through the RESULT columns.
+                for(int j=0;j<B[0].length;j++){
+                    //This last one helps sum the products of row/column index 
+                    //multiplication operations.
+                    for(int k=0;k<A[0].length;k++){
+                        result[i][j]+=A[i][k]*B[k][j];
+                    }
+                }
+            }
+            return result;
+        }
+ 
+        public static void matrixTranslate(float xt, float yt, float zt){
+            float[] temp1 = new float[] {1, 0, 0, xt};
+            float[] temp2 = new float[] {0, 1, 0, yt};
+            float[] temp3 = new float[] {0, 0, 1, zt};
+            float[] temp4 = new float[] {0, 0, 0, 1};
+            float[][] fulltemp=new float[][] {temp1, temp2, temp3, temp4};
+            transformArray=matrixMultiply(fulltemp, transformArray);
+            
+        }
 }
