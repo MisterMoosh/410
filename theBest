@@ -2,6 +2,7 @@ import java.io.*;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.lang.*;
 //This is the class that is run to accomplish work.
 //Preconditions of the program should be that it is run with a file name in its arguments
 //and the file ought to be present in the project folder. This is subject to change, but it will service
@@ -60,7 +61,15 @@ public class theBest {
         
         //And likewise, this will hold the rotation matris.
         public static float[][] rotationArray;
-        
+        public static float[][] rotationTranspose;
+        public static float[][] rotationZ;
+        public static float[][] finalRotation;
+        //along with the rotation array, we need a vector or two to do some cross
+        //products.
+        public static float[] vectorU;
+        public static float[] vectorV;
+        public static float[] vectorW;
+        public static float[] nonparallelVector;
         //And finally, this array will hold the final combined transformation matrix.
         public static float[][] resultArray;
         
@@ -91,7 +100,13 @@ public class theBest {
                 transformArray=new float[4][4];
                 scaleArray=new float[4][4];
                 resultArray=new float[4][4];
-
+                rotationTranspose=new float[4][4];
+                vectorV=new float[3];
+                vectorU=new float[3];
+                vectorW=new float[3];
+                nonparallelVector=new float[]{0,0,0};
+                rotationZ=new float[4][4];
+                finalRotation=new float[4][4];
                 //And now we fill the arrays with the identity matrix.
                 for(int i=0;i<4;i++){
                     for(int j=0;j<4;j++){
@@ -100,7 +115,8 @@ public class theBest {
                             transformArray[i][j]=1;
                             scaleArray[i][j]=1;
                             resultArray[i][j]=1;
-                            
+                            rotationZ[i][j]=1;
+                            finalRotation[i][j]=1;
                         }
                     }
                 }
@@ -225,7 +241,7 @@ public class theBest {
             			float rx=0;
             			float ry=0;
             			float rz=0;
-            			float theta=0;
+            			double theta=0;
             			//Yeah, you know where this is going. More matcher stuff.
             			//Woooooooo.
             			boolean completedArgs2=false;
@@ -243,6 +259,7 @@ public class theBest {
                                                     
                                                 }else if(index21==3){
                                                     theta=lastfound;
+                                                    completedArgs2=true;
                                                 }else if(index21==4){
                                                 	completedArgs2=false;
                                                 }
@@ -251,12 +268,92 @@ public class theBest {
                                                 if(completedArgs2){
                                                     //Here we do stuff with the 
                                                     //data we read in. What stuff? you ask?
-                                                    //Well. Umm. Yeah.
-                                                    
                                                 }else{
                                                     System.out.println("INCORRECT ARGUMENTS SCRUB");
                                                 }
-                            System.out.println("RX: "+rx + " "+ry+" "+rz+" "+theta);
+                                                //Normalizing vector U values real quick.
+                                                float averager=0;
+                                                averager+=(rx*rx);
+                                                averager+=(ry*ry);
+                                                averager+=(rz*rz);
+                                                if(averager!=0){
+                                                averager*=averager;
+                                                averager=(float)(Math.sqrt((double)averager));
+                                                rx/=averager;
+                                                ry/=averager;
+                                                rz/=averager;}
+                                                else{
+                                                    System.out.println("Inappropriate rotation vector given.");
+                                                    break;
+                                                }
+                                                //filling in vectorW with the inputted, normalized values.
+                                             vectorW[0]=rx;
+                                             vectorW[1]=ry;
+                                             vectorW[2]=rz;
+                                             int posflag=0;
+                                             float smallest=rx;
+                                             if(smallest>ry){
+                                                 smallest=ry;
+                                                 posflag=1;
+                                             }
+                                             if(smallest>rz){
+                                                 smallest=rz;
+                                                 posflag=2;
+                                             }
+                                             //This vector should never be parallel to the 
+                                             //given W vector now, so we can cross product them.
+                                             nonparallelVector[posflag]=1;
+                                            
+                                            vectorU=crossProduct(vectorW,nonparallelVector);
+                                            vectorV=crossProduct(vectorW,vectorU);
+                                    //System.out.println("RX: "+rx + " "+ry+" "+rz+" "+theta);
+                           //now we use W, V, and U to flesh out the rotation matrix a bit.
+                            for(int i=0;i<3;i++){
+                                    rotationArray[2][i]=vectorW[i];
+                                    rotationArray[0][i]=vectorU[i];
+                                    rotationArray[1][i]=vectorV[i];
+                            } rotationArray[3][3]=1;
+                            //Now, at this point, the rotationArray is equal to R-sub-w in the slides.
+                            //Gonna transpose it real quick to get it's inverse to use in the rotation
+                            //operation.
+                            for(int i=0;i<4;i++){
+                                for(int j=0;j<4;j++){
+                                    rotationTranspose[i][j]=rotationArray[j][i];
+                                }
+                            }
+                            
+//                            System.out.println("Rotation Matrix so far: ");
+//                            for(int i=0;i<4;i++){
+//                                for(int j=0;j<4;j++){
+//                                    System.out.print(rotationArray[i][j]+" ");
+//                                }
+//                                System.out.println();
+//                            }
+//                            System.out.println();
+                           // System.out.println(vectorU[0]+" "+vectorU[1]+" "+vectorU[2]);
+                            
+                            //Okay, now we have our Rw matrices, time to flesh out our Rz.
+                            rotationZ[0][0]=(float)Math.cos(Math.toRadians(theta));
+                            rotationZ[0][1]=(float)(Math.sin(Math.toRadians(theta))*-1);
+                            rotationZ[1][0]=(float)Math.sin(Math.toRadians(theta));
+                            rotationZ[1][1]=(float)Math.cos(Math.toRadians(theta));
+                            
+                                                        System.out.println("Rotation Matrix so far: ");
+                            for(int i=0;i<4;i++){
+                                for(int j=0;j<4;j++){
+                                    //Making sure floating error doesn't get me down.
+                                    if(rotationZ[i][j]<0.0000000000001&& rotationZ[i][j]>-0.0000000000001){
+                                        rotationZ[i][j]=0;
+                                    }
+                                    //System.out.print(rotationZ[i][j]+" ");
+                                }
+                                //System.out.println();
+                            }
+                            //System.out.println();
+                            
+                            //Now that I've done almost all the work in here, let's actually call a method 
+                            //to finish things out. WEEEEEEEEE.
+                            matrixRotate();
             			break;
                             
 			default: System.out.println("Invalid command. Type 'h' for help.");
@@ -276,7 +373,7 @@ public class theBest {
             //With the end result and then multiply that complete transformation
             //matrix (Which again, is located in the Scale matrix variable)
             //by our vertex data.
-            scaleArray=matrixMultiply(scaleArray, rotationArray);
+            scaleArray=matrixMultiply(scaleArray, finalRotation);
             scaleArray=matrixMultiply(scaleArray, transformArray);
             //At this point, all the transformations are presently held
             //in the scaleArray. Now, I must multiply this by EACH INDIVIDUAL
@@ -566,6 +663,8 @@ public class theBest {
         public static float[][] matrixMultiply(float[][] A, float[][] B){
             //I should never get into this code, but if I somehow end up multiplying two inappropriate matrices, 
             //I want to know about it pronto.
+            
+            //OH FUCK WHICH OF THE INPUTS, A OR B IS ON THE LEFT/RIGHT IN THE WRITTEN EQUATION??? GAAAHHHH
             if(A[0].length!=B.length){
                 System.out.println("MULTIPLYING INAPPROPRIATE MATRICES. FATAL ERROR.");
                 System.exit(-7);
@@ -598,8 +697,9 @@ public class theBest {
         }
 
 
-        public static void matrixRotate(float rX, float rY, float rZ){
-        	
+        public static void matrixRotate(){
+        	finalRotation=matrixMultiply(rotationArray, rotationZ);
+                finalRotation=matrixMultiply(finalRotation, rotationTranspose);
         }
         
         //This method only does cross products of two 3d vectors
@@ -615,7 +715,7 @@ public class theBest {
         	float b1=B[0];
         	float b2=B[1];
         	float b3=B[2];
-        	float[] result=new float[2];
+        	float[] result=new float[3];
         	result[0]=((a2*b3)-(a3*b2));
         	result[1]=((a3*b1)-(a1*b3));
         	result[2]=((a1*b2)-(a2*b1));
