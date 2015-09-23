@@ -228,23 +228,26 @@ public class theBest {
         				int index21=0;
                         float lastfound;
         				while(lastMatch.find()){
-                                         found2=Float.parseFloat(lastMatch.group());
-        					if(index2==0){
+                                         lastfound=Float.parseFloat(lastMatch.group());
+        					if(index21==0){
                                                     rx=lastfound;
                                                 }else if(index21==1){
                                                     ry=lastfound;
                                                 }else if(index21==2){
-                                                    zMove=lastfound;
+                                                    rz=lastfound;
                                                     
                                                 }else if(index21==3){
-                                                    completedArgs=true;
+                                                    theta=lastfound;
                                                 }else if(index21==4){
                                                 	completedArgs2=false;
                                                 }
         					index21++;
         					}
                                                 if(completedArgs2){
-                                                    matrixTranslate(xMove, yMove, zMove);
+                                                    //Here we do stuff with the 
+                                                    //data we read in. What stuff? you ask?
+                                                    //Well. Umm. Yeah.
+                                                    
                                                 }else{
                                                     System.out.println("INCORRECT ARGUMENTS SCRUB");
                                                 }
@@ -553,15 +556,7 @@ public class theBest {
             newScale[2][2]=zs;
 		scaleArray=matrixMultiply(newScale, scaleArray);
 	}
-	
-	
-	//This helper will allow me to throw a point into it (a 1X4 matrix)
-	//And get a matrix multipliable entity out, since my matrix multiply needs
-	//to take in two 2d arrays. Fingers crossed this actually works.
-	public static float[][] addColumn(float[] vert){
-		float[][] withZeroes=new float[][]{vert, {0,0,0,0}};
-		return withZeroes;
-	}
+
 	
         public static float[][] matrixMultiply(float[][] A, float[][] B){
             //I should never get into this code, but if I somehow end up multiplying two inappropriate matrices, 
