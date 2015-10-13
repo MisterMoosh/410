@@ -1,0 +1,6 @@
+package sugarRay;
+
+//This class will hold all the code to output my data into a picture file.
+public class Picture {
+
+}
