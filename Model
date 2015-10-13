@@ -1,0 +1,726 @@
+package sugarRay;
+
+import java.io.*;
+import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.lang.*;
+//This is the class that is run to accomplish work.
+//Preconditions of the program should be that it is run with a file name in its arguments
+//and the file ought to be present in the project folder. This is subject to change, but it will service
+//at least for now.
+public class Model {
+
+	//Global Variables
+	static String header;
+	public static int vertices;
+	public static int faces;
+        public static float averageX=0;
+        public static float averageY=0;
+        public static float averageZ=0;
+        public static float minX=999999999;
+        public static float maxX=-999999999;
+        public static float minY=999999999;
+        public static float maxY=-999999999;
+        public static float minZ=999999999;
+        public static float maxZ=-999999999;
+        
+        //These vectors are the ones I will use to cross product
+        //the original u vector. One must work since they aren't parallel.
+    public static float[] cross1=new float[]{0,0,1};
+    public static float[] cross2=new float[]{1,0,0};
+            
+	
+	//This variable will hold the first value of every face sequence
+	//Because this value dictates how many other values the 2D array
+	//Needs to hold in its second dimension. It helps, trust.
+	public static int faceNums;
+	
+	//This variable will help me tell when to switch what I'm saving
+	//in the data processing section.
+	public static int dataLines;
+	
+	/*On the organization of 2d arrays in Java, I can do this two ways.
+	in the first, I can have the first array be of the different points,
+	and then the second be the different positions within those vectors,
+	or I can I reverse it and scroll through the 4 positions within the 
+	vertices. As of now -and until I find good reason to change my
+	decision- I will have the first index hold different vectors, and then
+	have the second index access the points therein. Think:
+	[a b c d]
+	[e f g h]
+	[i j k l], which I would get from vertexArray[3][4]*/
+	public static float[][] vertexArray;
+	
+	//This is very similar, but holds the data beneath the vertices.
+	public static int[][] faceArray;
+	
+        //This array will hold the transformation array for scaling matrices and models.
+        public static float[][]scaleArray;
+        
+        //Similarly, this will hold a transformation array for translating matrices.
+        public static float[][] transformArray;
+        
+        //And likewise, this will hold the rotation matris.
+        public static float[][] rotationArray;
+        public static float[][] rotationTranspose;
+        public static float[][] rotationZ;
+        public static float[][] finalRotation;
+        //along with the rotation array, we need a vector or two to do some cross
+        //products.
+        public static float[] vectorU;
+        public static float[] vectorV;
+        public static float[] vectorW;
+        public static float[] nonparallelVector;
+        //And finally, this array will hold the final combined transformation matrix.
+        public static float[][] resultArray;
+        
+	public static void main(String[] args) throws IOException {
+		//This checks if the user has input two arguments for input and output
+		//file names. If they don't, or use too many arguments, the program
+		//exits.
+		float[][] testVec=new float[][]{{1},{1},{1},{1}};
+		float[][] tester=new float[][]{{0,1,0,1},{0,0,1,1},{0,0,0,1}};
+		float[][] tester2=new float[][]{{1,0,0,1},{0,1,0,1},{0,0,1,1},{0,0,0,1}};
+		tester=matrixMultiply(tester2,testVec);
+		//tester=matrixMultiply(tester,tester2);
+		for(int i=0; i<4; i++){
+			for(int j=0; j<1;j++){
+				//System.out.print(tester[i][j]+" ");
+			}
+			//System.out.println();
+		}
+
+		if(args.length!=2){
+			System.out.println("Must specify input and output file names.");
+			System.exit(0);
+		}
+                
+                //At this point I'm going to initialize the transformation matrices
+                //So hopefully they can be useful somehow.
+                rotationArray=new float[4][4];
+                transformArray=new float[4][4];
+                scaleArray=new float[4][4];
+                resultArray=new float[4][4];
+                rotationTranspose=new float[4][4];
+                vectorV=new float[3];
+                vectorU=new float[3];
+                vectorW=new float[3];
+                nonparallelVector=new float[]{0,0,0};
+                rotationZ=new float[4][4];
+                finalRotation=new float[4][4];
+                //And now we fill the arrays with the identity matrix.
+                for(int i=0;i<4;i++){
+                    for(int j=0;j<4;j++){
+                        if(i==j){
+                            rotationArray[i][j]=1;
+                            transformArray[i][j]=1;
+                            scaleArray[i][j]=1;
+                            resultArray[i][j]=1;
+                            rotationZ[i][j]=1;
+                            finalRotation[i][j]=1;
+                        }
+                    }
+                }
+
+		//STEP ONE: Read in the file.
+		readFile(args[0]);
+
+		//STEP TWO: While loop handling transformations
+		
+		//This scanner will read in data from the keyboard; pretty 
+		//straightforward.
+		Scanner kb=new Scanner(System.in);
+                
+                //Printing the number of vertices, faces, mean vertex and bounding
+                //box of vertices.
+                System.out.println("Number of vertices: "+vertices);
+                System.out.println("Number of faces: "+faces);
+                System.out.println("Mean Vertex:  ["+(averageX/vertices)+", "+(averageY/vertices)+", "+(averageZ/vertices)+"]");
+                System.out.println("The bounding box of this model is within the coordinates:");
+                System.out.println("X: "+minX+", "+maxX);
+                System.out.println("Y: "+minY+", "+maxY);
+                System.out.println("Z: "+minZ+", "+maxZ);
+                
+		//A usage statement first off.
+		System.out.println("Enter 'h' for help");
+		
+		//This boolean will help me exit the while loop when a 
+		//'W' is entered.
+		boolean stayInLoop=true;
+		
+		//Now this while loop will enable the program to take in 
+		//commands, one at a time, and handle them, with the help of 
+		//the variable "command"
+		String command;
+		while(stayInLoop){
+			
+			System.out.print("Enter command: ");
+			command=kb.nextLine();
+			switch (command.substring(0,1)){
+			//This case exits the while loop, prompts the user, and writes
+			//output.
+			case "W": stayInLoop=false;
+					writeFile(args[1]);
+					System.out.println("Exiting program and writing output file.");
+					break;
+			//This case just prints a command list for reference.
+			case "h": System.out.println("List of commands");
+						System.out.println("Scale Matrix:     'S sx sy sz'");
+						System.out.println("Translate matrix: 'T tx ty tz'");
+						System.out.println("Rotate matrix:    'R rx ry rz theta'");
+						System.out.println("Write and exit:   'W'");
+						break;
+			//This case extracts the scalars from the command, and then runs
+			//the matrixScale() method 3 times, once for each column and
+			//Scalar.
+			case "S":  Pattern p = Pattern.compile("[-]?[0-9]*\\.?[0-9]+");
+                                    float xScale=0;
+                                    float yScale=0;
+                                    float zScale=0;
+                                    boolean completeArgs=false;
+				//Grabbing floats from the input with error checking
+                                //To make sure 3 appropriate arguments are given.
+				Matcher m = p.matcher(command);
+				int index=0;
+                                float found;
+				while(m.find()){
+                                    found=Float.parseFloat(m.group());
+					if(index==0){
+                                            xScale=found;
+                                        }else if(index==1){
+                                            yScale=found;
+                                        }else if(index==2){
+                                            completeArgs=true;
+                                            zScale=found;
+                                            System.out.println("zMove: "+zScale);
+                                        }else if(index==3){
+                                            completeArgs=false;
+                                        }
+					index++;
+					}
+                                        if(completeArgs){
+                                            matrixScale(xScale, yScale, zScale);
+                                        }else{
+                                            System.out.println("INCORRECT ARGUMENTS SCRUB");
+                                        }
+						break;
+						
+                            
+                case "T": Pattern p2 = Pattern.compile("[-]?[0-9]*\\.?[0-9]+");
+                                    float xMove=0;
+                                    float yMove=0;
+                                    float zMove=0;
+                                    boolean completedArgs=false;
+				//Grabbing floats from the input with error checking
+                                //To make sure 3 appropriate arguments are given.
+				Matcher buttStallion = p2.matcher(command);
+				int index2=0;
+                                float found2;
+				while(buttStallion.find()){
+                                    found2=Float.parseFloat(buttStallion.group());
+					if(index2==0){
+                                            xMove=found2;
+                                        }else if(index2==1){
+                                            yMove=found2;
+                                        }else if(index2==2){
+                                            completedArgs=true;
+                                            zMove=found2;
+                                            System.out.println("zMove: "+zMove);
+                                        }else if(index2==3){
+                                            completedArgs=false;
+                                        }
+					index2++;
+					}
+                                        if(completedArgs){
+                                            matrixTranslate(xMove, yMove, zMove);
+                                        }else{
+                                            System.out.println("INCORRECT ARGUMENTS SCRUB");
+                                        }
+						break;
+						
+            case "R": 	Pattern lastpat = Pattern.compile("[-]?[0-9]*\\.?[0-9]+");
+            			float rx=0;
+            			float ry=0;
+            			float rz=0;
+            			double theta=0;
+            			//Yeah, you know where this is going. More matcher stuff.
+            			//Woooooooo.
+            			boolean completedArgs2=false;
+            			Matcher lastMatch = lastpat.matcher(command);
+        				int index21=0;
+                        float lastfound;
+        				while(lastMatch.find()){
+                                         lastfound=Float.parseFloat(lastMatch.group());
+        					if(index21==0){
+                                                    rx=lastfound;
+                                                }else if(index21==1){
+                                                    ry=lastfound;
+                                                }else if(index21==2){
+                                                    rz=lastfound;
+                                                    
+                                                }else if(index21==3){
+                                                    theta=lastfound;
+                                                    completedArgs2=true;
+                                                }else if(index21==4){
+                                                	completedArgs2=false;
+                                                }
+        					index21++;
+        					}
+                                                if(completedArgs2){
+                                                    //Here we do stuff with the 
+                                                    //data we read in. What stuff? you ask?
+                                                }else{
+                                                    System.out.println("INCORRECT ARGUMENTS SCRUB");
+                                                }
+                                                //Normalizing vector U values real quick.
+                                                float averager=0;
+                                                averager+=(rx*rx);
+                                                averager+=(ry*ry);
+                                                averager+=(rz*rz);
+                                                if(averager!=0){
+                                                averager*=averager;
+                                                averager=(float)(Math.sqrt((double)averager));
+                                                rx/=averager;
+                                                ry/=averager;
+                                                rz/=averager;}
+                                                else{
+                                                    System.out.println("Inappropriate rotation vector given.");
+                                                    break;
+                                                }
+                                                //filling in vectorW with the inputted, normalized values.
+                                             vectorW[0]=rx;
+                                             vectorW[1]=ry;
+                                             vectorW[2]=rz;
+                                             int posflag=0;
+                                             float smallest=rx;
+                                             if(smallest>ry){
+                                                 smallest=ry;
+                                                 posflag=1;
+                                             }
+                                             if(smallest>rz){
+                                                 smallest=rz;
+                                                 posflag=2;
+                                             }
+                                             //This vector should never be parallel to the 
+                                             //given W vector now, so we can cross product them.
+                                             nonparallelVector[posflag]=1;
+                                            
+                                            vectorU=crossProduct(vectorW,nonparallelVector);
+                                            vectorV=crossProduct(vectorW,vectorU);
+                                    //System.out.println("RX: "+rx + " "+ry+" "+rz+" "+theta);
+                           //now we use W, V, and U to flesh out the rotation matrix a bit.
+                            for(int i=0;i<3;i++){
+                                    rotationArray[2][i]=vectorW[i];
+                                    rotationArray[0][i]=vectorU[i];
+                                    rotationArray[1][i]=vectorV[i];
+                            } rotationArray[3][3]=1;
+                            //Now, at this point, the rotationArray is equal to R-sub-w in the slides.
+                            //Gonna transpose it real quick to get it's inverse to use in the rotation
+                            //operation.
+                            for(int i=0;i<4;i++){
+                                for(int j=0;j<4;j++){
+                                    rotationTranspose[i][j]=rotationArray[j][i];
+                                }
+                            }
+                            
+//                            System.out.println("Rotation Matrix so far: ");
+//                            for(int i=0;i<4;i++){
+//                                for(int j=0;j<4;j++){
+//                                    System.out.print(rotationArray[i][j]+" ");
+//                                }
+//                                System.out.println();
+//                            }
+//                            System.out.println();
+                           // System.out.println(vectorU[0]+" "+vectorU[1]+" "+vectorU[2]);
+                            
+                            //Okay, now we have our Rw matrices, time to flesh out our Rz.
+                            rotationZ[0][0]=(float)Math.cos(Math.toRadians(theta));
+                            rotationZ[0][1]=(float)(Math.sin(Math.toRadians(theta))*-1);
+                            rotationZ[1][0]=(float)Math.sin(Math.toRadians(theta));
+                            rotationZ[1][1]=(float)Math.cos(Math.toRadians(theta));
+                            
+                                                        System.out.println("Rotation Matrix so far: ");
+                            for(int i=0;i<4;i++){
+                                for(int j=0;j<4;j++){
+                                    //Making sure floating error doesn't get me down.
+                                    if(rotationZ[i][j]<0.0000000000001&& rotationZ[i][j]>-0.0000000000001){
+                                        rotationZ[i][j]=0;
+                                    }
+                                    //System.out.print(rotationZ[i][j]+" ");
+                                }
+                                //System.out.println();
+                            }
+                            //System.out.println();
+                            
+                            //Now that I've done almost all the work in here, let's actually call a method 
+                            //to finish things out. WEEEEEEEEE.
+                            matrixRotate();
+            			break;
+                            
+			default: System.out.println("Invalid command. Type 'h' for help.");
+				break;
+			}
+		}		
+	//end main
+	}
+	
+	//This method will print out the transformed data into a specified
+	//output file. I will run it at the end of the while loop that keeps
+	//accepting transformation inputs.
+	public static void writeFile(String outFile) throws IOException {
+				
+            //Just so we're clear, since we're done with our component matrices,
+            //Rather than make more, we're just going to overwrite the Scale matrix
+            //With the end result and then multiply that complete transformation
+            //matrix (Which again, is located in the Scale matrix variable)
+            //by our vertex data.
+            scaleArray=matrixMultiply(scaleArray, finalRotation);
+            scaleArray=matrixMultiply(scaleArray, transformArray);
+            //At this point, all the transformations are presently held
+            //in the scaleArray. Now, I must multiply this by EACH INDIVIDUAL
+            //POINT IN THE VERTICES MATRIX to get the correct output.
+            
+            //SO, I somehow oriented my matrix multiply to be... backwards?
+            //This means instead of having a vector be [1][4], it needs to be
+            //[4][1]. Which, actually now I think about it, makes complete sense.
+            //So yeah, gonna do that. Shit isn't backwards at all.
+            float[][] temp=new float[][]{{0},{0},{0},{0}};
+            for(int i=0;i<vertices;i++){
+            	//This first internal loop grabs values from the data set
+            	//and puts them into a temporary array in the correct orientation
+            	//for multiplication.
+            	for(int j=0;j<4;j++){
+            		temp[j][0]=vertexArray[i][j];
+            	}
+            	temp=matrixMultiply(scaleArray,temp);
+            	//This second one takes values out of the temporary array and
+            	//Throws them back in now that they've changed.
+            	for(int j=0;j<4;j++){
+            		vertexArray[i][j]=temp[j][0];
+            	}
+            }
+            //vertexArray=matrixMultiply(vertexArray,scaleArray);
+            
+		//Creating a BufferedWriter to print to the new file.
+		Writer writer = new BufferedWriter(new OutputStreamWriter(
+				new FileOutputStream(outFile), "utf-8"));
+		//First we print out the header
+					writer.write(header+"\n");
+					//Then we print out the vertices.
+					for(int i=0;i<vertices;i++){
+						for(int j=0;j<=2;j++){
+							writer.write(vertexArray[i][j]+" ");
+							//System.out.print(vertexArray[i][j]+" ");
+						}writer.write("\n");
+						//System.out.println();
+					}
+					System.out.println();
+					//And now we print the rest of the data.
+					for(int i=0;i<faces;i++){
+						for(int j=0; j<=faceNums;j++){
+							writer.write(faceArray[i][j]+" ");
+						}if(i!=faces-1){writer.write("\n");}
+					}            
+                for(int i=0;i<4;i++){
+                    for(int j=0;j<4;j++){
+                        //System.out.print(scaleArray[i][j]+" ");
+                    }
+                    //System.out.println();
+                }
+                                        
+					writer.close();
+	}
+
+	/*this method will process the file given for input.
+	 * It will save the header into a string, 
+	 * save the vertices into a matrix construct 2D array
+	 * And then the number of faces into a variable. I will
+	 * also save the remaining data into a similar 2D array.*/
+	public static void readFile(String fileName) throws IOException{
+		//These integer flags will be used to help keep the program from going
+		//through too many unnecessary if statements; the first section
+		//only applies to the pre-data bits, and so and so forth.
+		int topflag=0;
+		int resetflag=0;
+		
+		//First, construct a FileReader To get into the file.
+		FileReader input = new FileReader(fileName);
+		//Then, couple it with a BufferedReader
+		BufferedReader br = new BufferedReader(input);
+		String line="";
+		
+		//this variable will help me to count through lines to identify
+		//what lines I want to do with where, given the standardized form
+		//of the input files.
+		int linecounter=0;
+		
+		//This variable will enable me to allocate memory for my faces
+		//storage and avoid re-creating the 2d array over and over.
+		int faceArrayFlag=0;
+		
+		//All this loop does is read through the file to make sure I have 
+		//access to everything. Sort of a sanity check that I'll have to get rid of
+		//once I start actually categorizing and filing the data (probably).
+		while((line=br.readLine())!=null){
+			//System.out.println(line);
+			
+			//SORTING THE OUTPUT.
+			
+			//This checks if we can reset the linecounter, which we'll only
+			//do once when we switch from the header to the data.
+			if(resetflag==1){
+				linecounter=0;
+				resetflag=0;
+			}
+			
+			//This first if will keep the if logic from being iterated over
+			//more times than it needs to, though I guess since it's if-else
+			//logic it isn't technically much faster? Lets me use an 'else'
+			//at the end though, so I'll call it a win.
+			if(topflag==0){
+			
+			//This if detects whether we are reading the first line.
+			//I need to do this because without this 'if', there is already
+			//a 'null' when I try to concatenate more to the string.
+			//This first if ensures I don't get any of that.
+			if(linecounter==0){
+				header=line;
+				
+			}
+			//This next else if snags the next two lines of code, plain and 
+			//simple since nothing needs to be done with them or extracted
+			//from them and they seem to be standardized to "ply" and then
+			//listing the ascii format.
+			else if(linecounter<2){
+				header+="\n";
+				header+=line;
+				
+			}
+			
+			//This else if will catch the number of elements out of
+			//the line that specifies them by identifying a line that starts
+			//with "element ve", because well, I guess I didn't want to type
+			//the whole word "vertex" out. And I guess it also covers the
+			//typo of accidentally writing "element vertices".
+			//I'll call that a win.
+			else if(line.substring(0,10).equals("element ve")){
+				header+="\n"+line;
+				line = line.replaceAll("[^0-9]+", "");
+				vertices=Integer.parseInt(line);
+			}
+			//This else if should do basically the same thing extracting
+			//the number of faces from the header.
+			else if(line.substring(0,10).equals("element fa")){
+				header+="\n"+line;
+				line = line.replaceAll("[^0-9]+", "");
+				faces=Integer.parseInt(line);
+			}
+			//this last else if catches the last line that says
+			//"end_header" and then marks things up so they can begin 
+			//processing data.
+			else if(line.equals("end_header")){
+				header+="\n"+line;
+				topflag++;
+				resetflag++;
+				//We can now set the vertexArray's size since we know the number
+				//of vertices that we have.
+				vertexArray=new float[vertices][4];
+				dataLines=vertices+faces;
+				continue;
+			}
+			//our catch-all else just adds the line to the header.
+			else{header+="\n"+line;}
+			//increment the counter to prepare for next cycle.
+			linecounter++;
+			//This is the end of the header processing block.
+			}
+			
+			//This is the beginning of data processing (vertices and lower)
+			if(topflag==1){
+			//now we can count the lines until we've populated the array.
+			//This is easy now that we can just check the line counter
+			//against the number of vertices total.
+			if(linecounter<vertices){
+				//SO. Here we need to parse out the floats from the strings
+				//we're reading in and then add a '1' in the 4th index to 
+				//give our vertices that last data point (which I think is
+				//correct and necessary?).
+				
+				//I'm going to use a pattern like I did to parse out integers
+				//earlier, but tweaked a bit to work for floting points.
+				Pattern p = Pattern.compile("[-]?[0-9]*\\.?[0-9]+");
+				
+				//This matcher will help me distinguish where the floats
+				//start and end, but in order to place them correctly,
+				//I also need to add the index counter below it.
+				Matcher m = p.matcher(line);
+				int index=0;
+                                float found;
+				while(m.find()){
+                                    found=Float.parseFloat(m.group());
+					if(index<=2){
+					vertexArray[linecounter][index]=found;
+					//System.out.println("points: "+vertexArray[linecounter][index]);
+                                        
+                                        
+                                        //Here we're going to add things to our averages.
+                                        if(index==0){
+                                            averageX+=found;
+                                            if(found<minX){
+                                                minX=found;
+                                            }
+                                            else if(found>maxX){
+                                                maxX=found;
+                                            }
+                                        }else if(index==1){
+                                            averageY+=found;
+                                            if(found<minY){
+                                                minY=found;
+                                            }
+                                            else if(found>maxY){
+                                                maxY=found;
+                                            }
+                                        }else if(index==2){
+                                            averageZ+=found;
+                                            if(found<minZ){
+                                                minZ=found;
+                                            }
+                                            else if(found>maxZ){
+                                                maxZ=found;
+                                            }
+                                        }
+					index++;
+					}
+				}
+				//Now that everything else is fleshed out, we can go ahead and
+				//add the '1' in the last index.
+				vertexArray[linecounter][3]=(float) 1;
+				
+				//And here, now that we're ready for another line, we can increment
+				//the linecounter.
+				linecounter++;
+				
+				//This shows that we can go ahead and create the array for
+				//the faces. It also should NEVER get set to one after it 
+				//has passed through and the array has been made.
+				faceArrayFlag=1;
+				
+				//Now we're searching the rest of the file for faces, and 
+				//saving them.
+			}
+			//System.out.println("Linecounter: "+linecounter);
+			//System.out.println("Vertices: "+vertices);
+			//System.out.println("Datalines: "+dataLines);
+			if(linecounter>vertices && linecounter<=dataLines){
+				
+				linecounter++;
+				if(faceArrayFlag==1){
+					faceNums=Integer.parseInt(line.substring(0,1));
+					faceArrayFlag=0;
+					faceArray=new int[faces][faceNums+1];
+					
+				}
+				//Since at this point we're pretty sure that all that's
+				//in each line is integers, we can split along
+				//whitespace and then place each index into its correct place
+				//from there.
+				
+				String[] splitter = line.split(" ");
+				
+				int index=0;
+				
+				while(index<=faceNums){
+					//System.out.println(splitter[index]);
+					//System.out.println("THINGS: "+splitter[index]);
+					faceArray[linecounter-vertices-2][index]=Integer.parseInt(splitter[index]);
+					//System.out.println("points: "+faceArray[linecounter-vertices][index]);
+					index++;
+					
+				}
+			}
+			if(linecounter==vertices){
+				linecounter++;
+			}
+			
+			//End of Data processing block.	
+			}
+		//End of input processing loop.
+		}
+	}
+	
+	
+	//This method will perform the scaling operation on ROWS of a matrix at a time.
+	//The arguments it needs are first an int scalar, which it will use
+	//to scale the data, and second an int column, which specifies the 
+	//column/variable that is being modified. 0 for x, 1 for y, 2 for z.
+	public static void matrixScale(float xs, float ys, float zs){
+            float[][] newScale=new float[4][4];
+            newScale[0][0]=xs;
+            newScale[1][1]=ys;
+            newScale[2][2]=zs;
+		scaleArray=matrixMultiply(newScale, scaleArray);
+	}
+	
+        public static float[][] matrixMultiply(float[][] A, float[][] B){
+            //I should never get into this code, but if I somehow end up multiplying two inappropriate matrices, 
+            //I want to know about it pronto.
+            
+            //OH FUCK WHICH OF THE INPUTS, A OR B IS ON THE LEFT/RIGHT IN THE WRITTEN EQUATION??? GAAAHHHH
+            if(A[0].length!=B.length){
+                System.out.println("MULTIPLYING INAPPROPRIATE MATRICES. FATAL ERROR.");
+                System.exit(-7);
+            }
+            //This array will hold the result of the computation that gets returned.
+            float[][] result=new float[A.length][B[0].length];
+
+            //This outer loop scrolls through the RESULT rows.
+            for(int i=0;i<A.length;i++){
+                //this inner loop scrolls through the RESULT columns.
+                for(int j=0;j<B[0].length;j++){
+                    //This last one helps sum the products of row/column index 
+                    //multiplication operations.
+                    for(int k=0;k<A[0].length;k++){
+                        result[i][j]+=A[i][k]*B[k][j];
+                    }
+                }
+            }
+            return result;
+        }
+ 
+        public static void matrixTranslate(float xt, float yt, float zt){
+            float[] temp1 = new float[] {1, 0, 0, xt};
+            float[] temp2 = new float[] {0, 1, 0, yt};
+            float[] temp3 = new float[] {0, 0, 1, zt};
+            float[] temp4 = new float[] {0, 0, 0, 1};
+            float[][] fulltemp=new float[][] {temp1, temp2, temp3, temp4};
+            transformArray=matrixMultiply(fulltemp, transformArray);
+            
+        }
+
+
+        public static void matrixRotate(){
+        	finalRotation=matrixMultiply(rotationArray, rotationZ);
+                finalRotation=matrixMultiply(finalRotation, rotationTranspose);
+        }
+        
+        //This method only does cross products of two 3d vectors
+        //that get passed. Hopefully that's all I need.
+        public static float[] crossProduct(float[] A, float[] B){
+        	
+        	//cross product of A and B where A is {a1, a2, a3}
+        	//and B is {b1, b2, b3}
+        	//{a2b3-a3b2, a3b1-a1b3, a1b2-a2b1}
+        	float a1=A[0];
+        	float a2=A[1];
+        	float a3=A[2];
+        	float b1=B[0];
+        	float b2=B[1];
+        	float b3=B[2];
+        	float[] result=new float[3];
+        	result[0]=((a2*b3)-(a3*b2));
+        	result[1]=((a3*b1)-(a1*b3));
+        	result[2]=((a1*b2)-(a2*b1));
+        	return result;
+        }
+}
